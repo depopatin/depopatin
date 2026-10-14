@@ -1,4 +1,4 @@
-const V = 'depopatin-v4';
+const V = 'depopatin-v5';
 const ASSETS = ['./', 'index.html', 'app.js', 'styles.css', 'config.js', 'manifest.json',
   'logo.png', 'logo-simbolo.png', 'favicon.ico', 'favicon-32.png', 'apple-touch-icon.png',
   'icon-192.png', 'icon-512.png', 'icon-maskable-192.png', 'icon-maskable-512.png'];

@@ -46,7 +46,7 @@ async function guard(fn) {
   try { return await fn(); }
   catch (e) {
     console.error(e);
-    if (e && e.auth) { show('setup'); $('#setupMsg').textContent = e.message || 'Revisa la dirección y la clave.'; }
+    if (e && e.auth) { fillSetup(); show('setup'); $('#setupMsg').textContent = e.message || 'Revisa la dirección y la clave.'; }
     else toast((e && e.message) || 'Ha ocurrido un error', true);
   } finally { busy(false); }
 }
@@ -61,6 +61,7 @@ const safeName = s => String(s).replace(/[^\w.-]+/g, '_').slice(0, 40) || 'patin
 /* ============ Conexión con Drive (a través del script de Google) ============ */
 // La app no inicia sesión en Google: habla con un script de Google Apps Script
 // que se ejecuta con la cuenta del depósito. Se configura una vez por dispositivo.
+const NO_SCRIPT = 'No se pudo hablar con el script de Google. Revisa que en «Implementar» esté «Quién tiene acceso: Cualquier usuario» y que hayas autorizado los permisos. Prueba a abrir la dirección /exec en el navegador: debe salir {"ok":true,"app":"DepoPatin"}.';
 async function api(action, data = {}) {
   if (!API_URL || !API_KEY) throw { auth: true, message: 'Falta configurar la conexión.' };
   let r;
@@ -70,9 +71,12 @@ async function api(action, data = {}) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...data, action, key: API_KEY })
     });
-  } catch { throw new Error('Sin conexión. Comprueba internet.'); }
+  } catch {
+    if (navigator.onLine === false) throw new Error('Sin conexión. Comprueba internet.');
+    throw { auth: action === 'ping', message: NO_SCRIPT };
+  }
   let j;
-  try { j = await r.json(); } catch { throw new Error('El servidor no respondió bien (' + r.status + '). Revisa la dirección del script.'); }
+  try { j = await r.json(); } catch { throw { auth: action === 'ping', message: NO_SCRIPT }; }
   if (j.error) throw (j.auth ? { auth: true, message: j.error } : new Error(j.error));
   return j;
 }
@@ -318,13 +322,20 @@ function boot() {
 }
 function fillSetup() { $('#setApi').value = API_URL; $('#setKey').value = API_KEY; }
 async function saveSetup() {
+  $('#setupMsg').textContent = '';
   let url = $('#setApi').value.trim(), key = $('#setKey').value.trim();
   // También se puede pegar el enlace completo del atajo (…?api=…&key=…)
   try {
     const u = new URL(url);
     if (u.searchParams.get('api')) { key = u.searchParams.get('key') || key; url = u.searchParams.get('api'); $('#setKey').value = key; }
   } catch { }
-  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return toast('La dirección debe ser la del script de Google (termina en /exec)', true);
+  if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) {
+    $('#setupMsg').textContent = /\/dev$/.test(url)
+      ? 'Esa es la dirección de prueba (/dev). Usa la de «Implementar → Gestionar implementaciones», la que termina en /exec.'
+      : /\/edit/.test(url) ? 'Esa es la dirección del editor del script. Necesitas la de la aplicación web, que termina en /exec (Implementar → Gestionar implementaciones).'
+      : 'La dirección debe ser la de la aplicación web del script de Google: empieza por https://script.google.com/ y termina en /exec.';
+    return;
+  }
   if (!key) return toast('Escribe la clave', true);
   API_URL = url; API_KEY = key;
   await guard(async () => {
