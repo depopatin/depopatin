@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DepoPatín</title>
+<meta name="description" content="Registro y depósito de patines eléctricos">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DepoPatín">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header id="hdr">
+  <h1><img src="logo-simbolo.png" alt="" class="hlogo"><span>Depo<b>Patín</b></span></h1>
+  <span id="who"></span>
+  <button id="btnInstall" class="ghost" hidden>Instalar</button>
+  <button id="btnSettings" class="ghost" title="Conexión" aria-label="Conexión">⚙︎</button>
+</header>
+
+<main>
+
+  <!-- Conexión (solo la primera vez en cada dispositivo) -->
+  <section id="v-setup" class="view card" hidden>
+    <img src="logo.png" alt="DepoPatín · Registro y Depósito de Patines Electrónicos" class="biglogo">
+    <h2>Conectar con Drive</h2>
+    <p>Solo hay que hacerlo <b>una vez</b> en cada móvil u ordenador. Después la app entra directamente, sin pedir cuenta de Google.</p>
+    <label>Dirección del script de Google (o el enlace de conexión)
+      <input id="setApi" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+    </label>
+    <label>Clave
+      <input id="setKey" type="password" placeholder="La clave que pusiste en el script" autocomplete="off">
+    </label>
+    <p id="setupMsg" class="err small"></p>
+    <button id="btnSetup" class="btn pri">Conectar</button>
+    <p class="mut small">Más rápido: abre el enlace de conexión que te hayan mandado, o pégalo entero en el primer campo y pulsa Conectar.</p>
+    <p class="mut small">iPhone: abre esta página en Safari, pulsa Compartir y «Añadir a pantalla de inicio». Android y PC: pulsa «Instalar».</p>
+  </section>
+
+  <!-- Formulario nuevo / editar -->
+  <section id="v-form" class="view" hidden>
+    <h2 id="formTitle">Nuevo registro</h2>
+    <form id="frm" class="card" autocomplete="off">
+      <label>ID del patín
+        <input id="fId" required placeholder="Ej. P-0123">
+      </label>
+      <label>Nº de chasis o matrícula
+        <input id="fCh" required autocapitalize="characters" placeholder="Ej. 1234ABC / chasis">
+      </label>
+      <label>Fecha y hora de entrada
+        <input id="fDate" type="datetime-local" required>
+      </label>
+      <label>Notas (opcional)
+        <textarea id="fNotes" rows="2" placeholder="Estado, daños, procedencia…"></textarea>
+      </label>
+
+      <div class="sub">Fotos <span class="mut small">(llevan la fecha de entrada en una etiqueta)</span></div>
+      <div class="row">
+        <button type="button" id="btnCam" class="btn">📷 Hacer foto</button>
+        <button type="button" id="btnGal" class="btn alt">🖼 Galería</button>
+      </div>
+      <input type="file" id="inCam" accept="image/*" capture="environment" hidden>
+      <input type="file" id="inGal" accept="image/*" multiple hidden>
+      <div id="fPhotos" class="grid"></div>
+
+      <div class="row">
+        <button type="submit" class="btn pri">Guardar registro</button>
+        <button type="button" id="btnCancel" class="btn alt" hidden>Cancelar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Buscador -->
+  <section id="v-search" class="view" hidden>
+    <h2>Buscar</h2>
+    <div class="card">
+      <label>Chasis, matrícula o ID del patín
+        <input id="sQ" type="search" placeholder="Escribe para buscar…" autocapitalize="characters">
+      </label>
+      <div class="row2">
+        <label>Desde<input id="sFrom" type="date"></label>
+        <label>Hasta<input id="sTo" type="date"></label>
+      </div>
+      <div class="row">
+        <button id="btnClear" class="btn alt" type="button">Limpiar</button>
+        <button id="btnReload" class="btn alt" type="button">↻ Actualizar</button>
+      </div>
+    </div>
+    <div id="sCount" class="mut small pad"></div>
+    <div id="sList"></div>
+    <button id="btnMore" class="btn alt" hidden>Mostrar más</button>
+  </section>
+
+  <!-- Informe / detalle -->
+  <section id="v-detail" class="view" hidden>
+    <div id="dBody" class="card report"></div>
+    <div class="row noprint">
+      <button id="dBack" class="btn alt">← Volver</button>
+      <button id="dEdit" class="btn">✏️ Editar</button>
+    </div>
+    <div class="row noprint">
+      <button id="dPrint" class="btn alt">🖨 Imprimir / PDF</button>
+      <button id="dDel" class="btn danger">🗑 Eliminar</button>
+    </div>
+  </section>
+
+</main>
+
+<nav id="nav" hidden>
+  <button data-go="form">＋ Registrar</button>
+  <button data-go="search">🔍 Buscar</button>
+</nav>
+
+<div id="busy" hidden><div class="spin"></div><span id="busyTx">Cargando…</span></div>
+<div id="toast" hidden></div>
+<div id="lightbox" hidden></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
