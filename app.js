@@ -391,3 +391,106 @@ document.addEventListener('DOMContentLoaded', () => {
 
   boot();
 });
+
+/* ============ Conectar escaneando el código QR ============ */
+(function () {
+  const css = `
+  .qrbtn{margin-top:10px}
+  #qrScan{position:fixed;inset:0;z-index:80;background:#0b1220;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+  #qrScan .box{position:relative;width:min(80vw,360px);aspect-ratio:1;border-radius:22px;overflow:hidden;background:#000}
+  #qrScan video{width:100%;height:100%;object-fit:cover;display:block}
+  #qrScan .frame{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.9);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+  #qrScan p{color:#fff;text-align:center;margin:0;max-width:360px}
+  #qrScan .btn{max-width:360px}`;
+  let stream = null, raf = 0, detector = null, done = false;
+
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'jsQR.js'; s.onload = ok; s.onerror = () => ko(new Error('No se pudo cargar el lector de QR')); document.head.append(s); });
+  }
+  async function decodeFrom(src, w, h) {
+    if (detector) {
+      try { const r = await detector.detect(src); if (r && r[0]) return r[0].rawValue; } catch { }
+    }
+    await loadJsQR();
+    const c = decodeFrom.c || (decodeFrom.c = document.createElement('canvas'));
+    const k = Math.min(1, 900 / Math.max(w, h));
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(src, 0, 0, c.width, c.height);
+    const d = x.getImageData(0, 0, c.width, c.height);
+    const r = window.jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' });
+    return r ? r.data : null;
+  }
+  function stop() {
+    cancelAnimationFrame(raf); raf = 0;
+    if (stream) stream.getTracks().forEach(t => t.stop()); stream = null;
+    const o = document.getElementById('qrScan'); if (o) o.remove();
+  }
+  function useCode(text) {
+    let u; try { u = new URL(text); } catch { }
+    const api = u && u.searchParams.get('api'), key = u && u.searchParams.get('key');
+    if (!api || !key) { toast('Ese QR no es el de conexión de DepoPatín', true); return false; }
+    stop();
+    $('#setApi').value = api; $('#setKey').value = key;
+    saveSetup();
+    return true;
+  }
+  async function fromPhoto(file) {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    try {
+      busy('Leyendo el código…');
+      const img = new Image(); img.src = url; await img.decode();
+      const t = await decodeFrom(img, img.naturalWidth, img.naturalHeight);
+      busy(false);
+      if (t) useCode(t); else toast('No se ha encontrado ningún QR en la foto. Prueba más cerca y con luz.', true);
+    } catch (e) { busy(false); toast(e.message || 'No se pudo leer la foto', true); }
+    finally { URL.revokeObjectURL(url); }
+  }
+  async function start() {
+    done = false;
+    if ('BarcodeDetector' in window) { try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch { detector = null; } }
+    const o = document.createElement('div'); o.id = 'qrScan';
+    o.innerHTML = `<p><b>Apunta al código QR de conexión</b></p>
+      <div class="box"><video playsinline muted autoplay></video><div class="frame"></div></div>
+      <p class="small" id="qrTip">Se conectará solo al reconocerlo.</p>
+      <button type="button" class="btn alt" id="qrPhoto">📷 Hacer una foto del QR</button>
+      <button type="button" class="btn alt" id="qrClose">Cancelar</button>`;
+    document.body.append(o);
+    $('#qrClose').onclick = stop;
+    $('#qrPhoto').onclick = () => { stop(); $('#qrFile').click(); };
+    const v = o.querySelector('video');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('sin cámara');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      v.srcObject = stream; await v.play();
+    } catch (e) {
+      $('#qrTip').textContent = 'No se pudo abrir la cámara aquí. Usa «Hacer una foto del QR» (o revisa el permiso de cámara del navegador).';
+      return;
+    }
+    if (!detector) { try { await loadJsQR(); } catch { } }
+    let busyFrame = false, last = 0;
+    const tick = async t => {
+      if (!stream) return;
+      raf = requestAnimationFrame(tick);
+      if (busyFrame || t - last < 200 || !v.videoWidth) return;
+      busyFrame = true; last = t;
+      try {
+        const text = await decodeFrom(v, v.videoWidth, v.videoHeight);
+        if (text && !done) { done = useCode(text); }
+      } catch { } finally { busyFrame = false; }
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const st = document.createElement('style'); st.textContent = css; document.head.append(st);
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = 'btnQR'; b.className = 'btn qrbtn'; b.textContent = '📷 Conectar escaneando el código QR';
+    const f = document.createElement('input'); f.type = 'file'; f.id = 'qrFile'; f.accept = 'image/*'; f.setAttribute('capture', 'environment'); f.hidden = true;
+    const ref = document.getElementById('btnSetup');
+    if (ref) ref.after(b, f);
+    b.onclick = start;
+    f.onchange = e => { fromPhoto(e.target.files[0]); e.target.value = ''; };
+  });
+})();

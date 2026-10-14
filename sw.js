@@ -1,7 +1,7 @@
-const V = 'depopatin-v5';
+const V = 'depopatin-v6';
 const ASSETS = ['./', 'index.html', 'app.js', 'styles.css', 'config.js', 'manifest.json',
   'logo.png', 'logo-simbolo.png', 'favicon.ico', 'favicon-32.png', 'apple-touch-icon.png',
-  'icon-192.png', 'icon-512.png', 'icon-maskable-192.png', 'icon-maskable-512.png'];
+  'icon-192.png', 'icon-512.png', 'icon-maskable-192.png', 'icon-maskable-512.png', 'jsQR.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(V).then(c => c.addAll(ASSETS)));
